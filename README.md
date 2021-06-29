@@ -1,4 +1,4 @@
-## Unet：U-Net: Convolutional Networks for Biomedical Image Segmentation目标检测模型在Keras当中的实现
+## Unet：U-Net: Convolutional Networks for Biomedical Image Segmentation目标检测模型在Tensorflow2当中的实现
 ---
 
 ## 目录
@@ -15,11 +15,10 @@
 **unet并不适合VOC此类数据集，其更适合特征少，需要浅层特征的医药数据集之类的。**
 | 训练数据集 | 权值文件名称 | 测试数据集 | 输入图片大小 | mIOU | 
 | :-----: | :-----: | :------: | :------: | :------: | 
-| VOC12+SBD | [unet_voc.h5](https://github.com/bubbliiiing/unet-keras/releases/download/v1.0/unet_voc.h5) | VOC-Val12 | 512x512| 55.74 | 
+| VOC12+SBD | [unet_voc.h5](https://github.com/bubbliiiing/unet-tf2/releases/download/v1.0/unet_voc.h5) | VOC-Val12 | 512x512| 55.74 | 
 
 ## 所需环境
-tensorflow-gpu==1.13.1    
-keras==2.1.5   
+tensorflow-gpu==2.2.0 
 
 ## 注意事项
 unet_voc.h5是基于VOC拓展数据集训练的。  
