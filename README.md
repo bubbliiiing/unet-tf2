@@ -27,7 +27,7 @@ unet_medical.h5是使用示例的细胞分割数据集训练的。
 
 ## 文件下载
 训练所需的unet_voc.h5和unet_medical.h5可在百度网盘中下载。    
-链接: https://pan.baidu.com/s/1NIA3pOWYjseFI7Ofv6QoCg 提取码: f38i     
+链接: https://pan.baidu.com/s/167wlnwZtO7GEFIlbwYh1jg 提取码: qw52   
 
 VOC拓展数据集的百度网盘如下：  
 链接: https://pan.baidu.com/s/1BrR7AUM1XJvPWjKMIy2uEw 提取码: vszf    
