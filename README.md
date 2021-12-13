@@ -15,22 +15,25 @@
 **unet并不适合VOC此类数据集，其更适合特征少，需要浅层特征的医药数据集之类的。**
 | 训练数据集 | 权值文件名称 | 测试数据集 | 输入图片大小 | mIOU | 
 | :-----: | :-----: | :------: | :------: | :------: | 
-| VOC12+SBD | [unet_voc.h5](https://github.com/bubbliiiing/unet-tf2/releases/download/v1.0/unet_voc.h5) | VOC-Val12 | 512x512| 55.74 | 
+| VOC12+SBD | [unet_vgg_voc.h5](https://github.com/bubbliiiing/unet-tf2/releases/download/v1.0/unet_vgg_voc.h5) | VOC-Val12 | 512x512| 45.48 | 
+| VOC12+SBD | [unet_resnet_voc.h5](https://github.com/bubbliiiing/unet-tf2/releases/download/v1.0/unet_resnet_voc.h5) | VOC-Val12 | 512x512| 64.12 | 
 
 ### 所需环境
 tensorflow-gpu==2.2.0 
 
 ### 注意事项
-unet_voc.h5是基于VOC拓展数据集训练的。  
-unet_medical.h5是使用示例的细胞分割数据集训练的。  
+unet_vgg_voc.h5是基于VOC拓展数据集训练的。  
+unet_vgg_medical.h5是使用示例的细胞分割数据集训练的。  
 在使用时需要注意区分。  
 
 ### 文件下载
-训练所需的unet_voc.h5和unet_medical.h5可在百度网盘中下载。    
-链接: https://pan.baidu.com/s/1xMlYJNcFMTYVSvSLBHyGzA 提取码: 9754    
+训练所需的权值可在百度网盘中下载。    
+链接: https://pan.baidu.com/s/1s7GhhZshs9oVPJonKEUscA    
+提取码: 518k   
 
 VOC拓展数据集的百度网盘如下：  
-链接: https://pan.baidu.com/s/1BrR7AUM1XJvPWjKMIy2uEw 提取码: vszf    
+链接: https://pan.baidu.com/s/1vkk3lMheUm6IjTXznlg7Ng   
+提取码: 44mk   
 
 ### 训练步骤
 #### 一、训练voc数据集
@@ -52,13 +55,13 @@ VOC拓展数据集的百度网盘如下：
 ### 预测步骤
 #### 一、使用预训练权重
 ##### a、VOC预训练权重
-1. 下载完库后解压，如果想要利用voc训练好的权重进行预测，在百度网盘或者release下载unet_voc.h5，放入model_data，运行即可预测。  
+1. 下载完库后解压，如果想要利用voc训练好的权重进行预测，在百度网盘或者release下载权值，放入model_data，运行即可预测。  
 ```python
 img/street.jpg
 ```    
 2. 在predict.py里面进行设置可以进行fps测试和video视频检测。    
 ##### b、医药预训练权重
-1. 下载完库后解压，如果想要利用医药数据集训练好的权重进行预测，在百度网盘或者release下载unet_medical.h5，放入model_data，修改unet.py中的model_path和num_classes；
+1. 下载完库后解压，如果想要利用医药数据集训练好的权重进行预测，在百度网盘或者release下载权值，放入model_data，修改unet.py中的model_path和num_classes；
 ```python
 _defaults = {
     #-------------------------------------------------------------------#
@@ -66,11 +69,15 @@ _defaults = {
     #   训练好后logs文件夹下存在多个权值文件，选择验证集损失较低的即可。
     #   验证集损失较低不代表miou较高，仅代表该权值在验证集上泛化性能较好。
     #-------------------------------------------------------------------#
-    "model_path"        : 'model_data/unet_medical.h5',
+    "model_path"        : 'model_data/unet_voc_medical.h5',
     #----------------------------------------#
     #   所需要区分的类的个数+1
     #----------------------------------------#
-    "num_classes"       : 21,
+    "num_classes"       : 2,
+    #----------------------------------------#
+    #   所使用的的主干网络：vgg、resnet50   
+    #----------------------------------------#
+    "backbone"          : "vgg",
     #----------------------------------------#
     #   输入图片的大小
     #----------------------------------------#
@@ -97,11 +104,15 @@ _defaults = {
     #   训练好后logs文件夹下存在多个权值文件，选择验证集损失较低的即可。
     #   验证集损失较低不代表miou较高，仅代表该权值在验证集上泛化性能较好。
     #-------------------------------------------------------------------#
-    "model_path"        : 'model_data/unet_voc.h5',
+    "model_path"        : 'model_data/unet_vgg_voc.h5',
     #----------------------------------------#
     #   所需要区分的类的个数+1
     #----------------------------------------#
     "num_classes"       : 21,
+    #----------------------------------------#
+    #   所使用的的主干网络：vgg、resnet50   
+    #----------------------------------------#
+    "backbone"          : "vgg",
     #----------------------------------------#
     #   输入图片的大小
     #----------------------------------------#
