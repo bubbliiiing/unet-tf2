@@ -4,7 +4,7 @@ import tensorflow as tf
 from tqdm import tqdm
 
 
-def get_train_step_fn():
+def get_train_step_fn(strategy):
     @tf.function
     def train_step(images, labels, net, optimizer, loss, metrics):
         with tf.GradientTape() as tape:
@@ -16,7 +16,17 @@ def get_train_step_fn():
         
         _f_score = tf.reduce_mean(metrics(labels, prediction))
         return loss_value, _f_score
-    return train_step
+    if strategy == None:
+        return train_step
+    else:
+        #----------------------#
+        #   多gpu训练
+        #----------------------#
+        @tf.function
+        def distributed_train_step(images, labels, net, optimizer, loss, metrics):
+            per_replica_losses, per_replica_score = strategy.run(train_step, args=(images, labels, net, optimizer, loss, metrics))
+            return strategy.reduce(tf.distribute.ReduceOp.MEAN, per_replica_losses, axis=None), strategy.reduce(tf.distribute.ReduceOp.MEAN, per_replica_score, axis=None)
+        return distributed_train_step
 
 @tf.function
 def val_step(images, labels, net, optimizer, loss, metrics):
@@ -25,8 +35,8 @@ def val_step(images, labels, net, optimizer, loss, metrics):
     _f_score = tf.reduce_mean(metrics(labels, prediction))
     return loss_value, _f_score
 
-def fit_one_epoch(net, loss, loss_history, optimizer, epoch, epoch_step, epoch_step_val, gen, gen_val, Epoch, metrics, save_period, save_dir):
-    train_step      = get_train_step_fn()
+def fit_one_epoch(net, loss, loss_history, optimizer, epoch, epoch_step, epoch_step_val, gen, gen_val, Epoch, metrics, save_period, save_dir, strategy):
+    train_step      = get_train_step_fn(strategy)
     total_loss      = 0
     total_f_score   = 0
     
@@ -74,8 +84,8 @@ def fit_one_epoch(net, loss, loss_history, optimizer, epoch, epoch_step, epoch_s
     if (epoch + 1) % save_period == 0 or epoch + 1 == Epoch:
         net.save_weights(os.path.join(save_dir, 'ep%03d-loss%.3f-val_loss%.3f.h5' % (epoch + 1, total_loss / epoch_step, val_loss / epoch_step_val)))
 
-def fit_one_epoch_no_val(net, loss, loss_history, optimizer, epoch, epoch_step, gen, Epoch, metrics, save_period, save_dir):
-    train_step      = get_train_step_fn()
+def fit_one_epoch_no_val(net, loss, loss_history, optimizer, epoch, epoch_step, gen, Epoch, metrics, save_period, save_dir, strategy):
+    train_step      = get_train_step_fn(strategy)
     total_loss      = 0
     total_f_score   = 0
 

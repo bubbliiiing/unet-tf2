@@ -50,13 +50,19 @@ for gpu in gpus:
    这些都是经验上，只能靠各位同学多查询资料和自己试试了。
 '''
 if __name__ == "__main__":    
-    #----------------------------------------------------#
+    #---------------------------------------------------------------------#
     #   是否使用eager模式训练
-    #----------------------------------------------------#
+    #---------------------------------------------------------------------#
     eager           = False
-    #--------------------------------------------------------------------#
+    #---------------------------------------------------------------------#
+    #   train_gpu   训练用到的GPU
+    #               默认为第一张卡、双卡为[0, 1]、三卡为[0, 1, 2]
+    #               在使用多GPU时，每个卡上的batch为总batch除以卡的数量。
+    #---------------------------------------------------------------------#
+    train_gpu       = [0,]
+    #---------------------------------------------------------------------#
     #   简单的医药分割只分背景和边缘
-    #--------------------------------------------------------------------#
+    #---------------------------------------------------------------------#
     num_classes     = 2
     #-------------------------------#
     #   主干网络选择
@@ -211,14 +217,43 @@ if __name__ == "__main__":
     num_workers     = 1
 
     #------------------------------------------------------#
-    #   获取model
+    #   设置用到的显卡
     #------------------------------------------------------#
-    model = Unet([input_shape[0], input_shape[1], 3], num_classes, backbone)
-    if model_path != '':
+    os.environ["CUDA_VISIBLE_DEVICES"]  = ','.join(str(x) for x in train_gpu)
+    ngpus_per_node                      = len(train_gpu)
+    
+    gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
+    for gpu in gpus:
+        tf.config.experimental.set_memory_growth(gpu, True)
+        
+    if ngpus_per_node > 1:
+        strategy = tf.distribute.MirroredStrategy()
+    else:
+        strategy = None
+    print('Number of devices: {}'.format(ngpus_per_node))
+    
+    if ngpus_per_node > 1:
+        with strategy.scope():
+            #------------------------------------------------------#
+            #   获取model
+            #------------------------------------------------------#
+            model = Unet([input_shape[0], input_shape[1], 3], num_classes, backbone)
+            if model_path != '':
+                #------------------------------------------------------#
+                #   载入预训练权重
+                #------------------------------------------------------#
+                model.load_weights(model_path, by_name=True, skip_mismatch=True)
+    else:
         #------------------------------------------------------#
-        #   载入预训练权重
+        #   获取model
         #------------------------------------------------------#
-        model.load_weights(model_path, by_name=True, skip_mismatch=True)
+        model = Unet([input_shape[0], input_shape[1], 3], num_classes, backbone)
+        if model_path != '':
+            #------------------------------------------------------#
+            #   载入预训练权重
+            #------------------------------------------------------#
+            model.load_weights(model_path, by_name=True, skip_mismatch=True)
+
 
     if focal_loss:
         if dice_loss:
@@ -345,16 +380,23 @@ if __name__ == "__main__":
                 K.set_value(optimizer.lr, lr)
                 
                 fit_one_epoch_no_val(model, loss, loss_history, optimizer, epoch, epoch_step, gen, 
-                            end_epoch, f_score(), save_period, save_dir)
+                            end_epoch, f_score(), save_period, save_dir, strategy)
                 
                 train_dataloader.on_epoch_end()
 
         else:
             start_epoch = Init_Epoch
             end_epoch   = Freeze_Epoch if Freeze_Train else UnFreeze_Epoch
-            model.compile(loss = loss,
-                    optimizer = optimizer,
-                    metrics = [f_score()])
+            
+            if ngpus_per_node > 1:
+                with strategy.scope():
+                    model.compile(loss = loss,
+                            optimizer = optimizer,
+                            metrics = [f_score()])
+            else:
+                model.compile(loss = loss,
+                        optimizer = optimizer,
+                        metrics = [f_score()])
             #-------------------------------------------------------------------------------#
             #   训练参数的设置
             #   logging         用于设置tensorboard的保存地址
@@ -373,8 +415,8 @@ if __name__ == "__main__":
             callbacks       = [logging, loss_history, checkpoint, lr_scheduler]
 
             if start_epoch < end_epoch:
-                model.fit_generator(
-                    generator           = train_dataloader,
+                model.fit(
+                    x                   = train_dataloader,
                     steps_per_epoch     = epoch_step,
                     epochs              = end_epoch,
                     initial_epoch       = start_epoch,
@@ -408,9 +450,15 @@ if __name__ == "__main__":
                     
                 for i in range(len(model.layers)): 
                     model.layers[i].trainable = True
-                model.compile(loss = loss,
-                        optimizer = optimizer,
-                        metrics = [f_score()])
+                if ngpus_per_node > 1:
+                    with strategy.scope():
+                        model.compile(loss = loss,
+                                optimizer = optimizer,
+                                metrics = [f_score()])
+                else:
+                    model.compile(loss = loss,
+                            optimizer = optimizer,
+                            metrics = [f_score()])
 
                 epoch_step      = num_train // batch_size
                 
@@ -419,8 +467,8 @@ if __name__ == "__main__":
 
                 train_dataloader.batch_size    = Unfreeze_batch_size
 
-                model.fit_generator(
-                    generator           = train_dataloader,
+                model.fit(
+                    x                   = train_dataloader,
                     steps_per_epoch     = epoch_step,
                     epochs              = end_epoch,
                     initial_epoch       = start_epoch,
