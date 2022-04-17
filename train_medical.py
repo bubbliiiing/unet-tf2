@@ -19,9 +19,6 @@ from utils.dataloader_medical import UnetDataset
 from utils.utils_fit import fit_one_epoch_no_val
 from utils.utils_metrics import Iou_score, f_score
 
-gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
-for gpu in gpus:
-    tf.config.experimental.set_memory_growth(gpu, True)
 '''
 训练自己的语义分割模型一定需要注意以下几点：
 1、该数据集是我根据网上找到的医药数据集特殊建立的训练文件，只是一个例子，用于展示数据集不是voc格式时要如何进行训练。
