@@ -107,8 +107,6 @@ def fit_one_epoch_no_val(net, loss, loss_history, optimizer, epoch, epoch_step, 
             if iteration >= epoch_step:
                 break
             images, labels = batch[0], batch[1]
-            labels = tf.cast(tf.convert_to_tensor(labels), tf.float32)
-
             loss_value, _f_score = train_step(images, labels, net, optimizer, loss, metrics)
             total_loss      += loss_value.numpy()
             total_f_score   += _f_score.numpy()
