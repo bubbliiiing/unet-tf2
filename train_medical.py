@@ -222,6 +222,12 @@ if __name__ == "__main__":
     gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
     for gpu in gpus:
         tf.config.experimental.set_memory_growth(gpu, True)
+    
+    #------------------------------------------------------#
+    #   判断当前使用的GPU数量与机器上实际的GPU数量
+    #------------------------------------------------------#
+    if ngpus_per_node > 1 and ngpus_per_node > len(gpus):
+        raise ValueError("The number of GPUs specified for training is more than the GPUs on the machine")
         
     if ngpus_per_node > 1:
         strategy = tf.distribute.MirroredStrategy()
@@ -329,6 +335,9 @@ if __name__ == "__main__":
             
             gen     = tf.data.Dataset.from_generator(partial(train_dataloader.generate), (tf.float32, tf.float32))
             gen     = gen.shuffle(buffer_size = batch_size).prefetch(buffer_size = batch_size)
+                    
+            if ngpus_per_node > 1:
+                gen     = strategy.experimental_distribute_dataset(gen)
 
             time_str        = datetime.datetime.strftime(datetime.datetime.now(),'%Y_%m_%d_%H_%M_%S')
             log_dir         = os.path.join(save_dir, "loss_" + str(time_str))
@@ -371,6 +380,9 @@ if __name__ == "__main__":
 
                     gen     = gen.shuffle(buffer_size = batch_size).prefetch(buffer_size = batch_size)
                     
+                    if ngpus_per_node > 1:
+                        gen     = strategy.experimental_distribute_dataset(gen)
+                            
                     UnFreeze_flag = True
 
                 lr = lr_scheduler_func(epoch)
