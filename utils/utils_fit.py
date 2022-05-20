@@ -50,7 +50,7 @@ def get_val_step_fn(strategy):
             return strategy.reduce(tf.distribute.ReduceOp.MEAN, per_replica_losses, axis=None), strategy.reduce(tf.distribute.ReduceOp.MEAN, per_replica_score, axis=None)
         return distributed_val_step
 
-def fit_one_epoch(net, loss, loss_history, optimizer, epoch, epoch_step, epoch_step_val, gen, gen_val, Epoch, metrics, save_period, save_dir, strategy):
+def fit_one_epoch(net, loss, loss_history, eval_callback, optimizer, epoch, epoch_step, epoch_step_val, gen, gen_val, Epoch, metrics, save_period, save_dir, strategy):
     train_step      = get_train_step_fn(strategy)
     val_step        = get_val_step_fn(strategy)
     
@@ -91,6 +91,7 @@ def fit_one_epoch(net, loss, loss_history, optimizer, epoch, epoch_step, epoch_s
 
     logs = {'loss': total_loss / epoch_step, 'val_loss': val_loss / epoch_step_val}
     loss_history.on_epoch_end([], logs)
+    eval_callback.on_epoch_end(epoch, logs)
     print('Epoch:'+ str(epoch+1) + '/' + str(Epoch))
     print('Total Loss: %.3f || Val Loss: %.3f ' % (total_loss / epoch_step, val_loss / epoch_step_val))
     

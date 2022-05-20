@@ -12,7 +12,7 @@ from tensorflow.keras.optimizers import SGD, Adam
 from nets.unet import Unet
 from nets.unet_training import (CE, Focal_Loss, dice_loss_with_CE,
                                 dice_loss_with_Focal_Loss, get_lr_scheduler)
-from utils.callbacks import (ExponentDecayScheduler, LossHistory,
+from utils.callbacks import (EvalCallback, ExponentDecayScheduler, LossHistory,
                              ModelCheckpoint)
 from utils.dataloader import UnetDataset
 from utils.utils import show_config
@@ -177,6 +177,16 @@ if __name__ == "__main__":
     #   save_dir        权值与日志文件保存的文件夹
     #------------------------------------------------------------------#
     save_dir            = 'logs'
+    #------------------------------------------------------------------#
+    #   eval_flag       是否在训练时进行评估，评估对象为验证集
+    #   eval_period     代表多少个epoch评估一次，不建议频繁的评估
+    #                   评估需要消耗较多的时间，频繁评估会导致训练非常慢
+    #   此处获得的mAP会与get_map.py获得的会有所不同，原因有二：
+    #   （一）此处获得的mAP为验证集的mAP。
+    #   （二）此处设置评估参数较为保守，目的是加快评估速度。
+    #------------------------------------------------------------------#
+    eval_flag           = True
+    eval_period         = 5
     
     #------------------------------------------------------------------#
     #   VOCdevkit_path  数据集路径
@@ -355,6 +365,8 @@ if __name__ == "__main__":
             time_str        = datetime.datetime.strftime(datetime.datetime.now(),'%Y_%m_%d_%H_%M_%S')
             log_dir         = os.path.join(save_dir, "loss_" + str(time_str))
             loss_history    = LossHistory(log_dir)
+            eval_callback   = EvalCallback(model, input_shape, num_classes, val_lines, VOCdevkit_path, log_dir, \
+                                            eval_flag=eval_flag, period=eval_period)
             #---------------------------------------#
             #   开始模型训练
             #---------------------------------------#
@@ -406,7 +418,7 @@ if __name__ == "__main__":
                 lr = lr_scheduler_func(epoch)
                 K.set_value(optimizer.lr, lr)
                 
-                fit_one_epoch(model, loss, loss_history, optimizer, epoch, epoch_step, epoch_step_val, gen, gen_val, 
+                fit_one_epoch(model, loss, loss_history, eval_callback, optimizer, epoch, epoch_step, epoch_step_val, gen, gen_val, 
                             end_epoch, f_score(), save_period, save_dir, strategy)
 
                 train_dataloader.on_epoch_end()
@@ -444,7 +456,9 @@ if __name__ == "__main__":
                                     monitor = 'val_loss', save_weights_only = True, save_best_only = True, period = 1)
             early_stopping  = EarlyStopping(monitor='val_loss', min_delta = 0, patience = 10, verbose = 1)
             lr_scheduler    = LearningRateScheduler(lr_scheduler_func, verbose = 1)
-            callbacks       = [logging, loss_history, checkpoint, checkpoint_last, checkpoint_best, lr_scheduler]
+            eval_callback   = EvalCallback(model, input_shape, num_classes, val_lines, VOCdevkit_path, log_dir, \
+                                            eval_flag=eval_flag, period=eval_period)
+            callbacks       = [logging, loss_history, checkpoint, checkpoint_last, checkpoint_best, lr_scheduler, eval_callback]
 
             if start_epoch < end_epoch:
                 print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
@@ -481,7 +495,7 @@ if __name__ == "__main__":
                 #---------------------------------------#
                 lr_scheduler_func = get_lr_scheduler(lr_decay_type, Init_lr_fit, Min_lr_fit, UnFreeze_Epoch)
                 lr_scheduler    = LearningRateScheduler(lr_scheduler_func, verbose = 1)
-                callbacks       = [logging, loss_history, checkpoint, checkpoint_last, checkpoint_best, lr_scheduler]
+                callbacks       = [logging, loss_history, checkpoint, checkpoint_last, checkpoint_best, lr_scheduler, eval_callback]
                     
                 for i in range(len(model.layers)): 
                     model.layers[i].trainable = True
